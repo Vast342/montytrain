@@ -5,19 +5,19 @@ mod preparer;
 mod trainer;
 
 use bullet::{
-    logger, lr, operations,
-    optimiser::{AdamWOptimiser, AdamWParams, Optimiser},
-    wdl, Activation, ExecutionContext, Graph, GraphBuilder, LocalSettings, NetworkTrainer, Shape,
-    TrainingSchedule, TrainingSteps,
+    logger, lr, operations, optimiser::{AdamWOptimiser, AdamWParams, Optimiser}, wdl, Activation, ExecutionContext, Graph, GraphBuilder, LocalSettings, NetworkTrainer, Shape, TrainingSchedule, TrainingSteps
 };
+use moves::NUM_MOVES;
+use std::env;
 use trainer::Trainer;
 
-const ID: &str = "policy001";
+const ID: &str = "apn_004";
 
 fn main() {
-    let data_preparer = preparer::DataPreparer::new("/home/privateclient/monty_value_training/interleaved.binpack", 96000);
+    env::set_var("RUST_BACKTRACE", "1");
+    let data_preparer = preparer::DataPreparer::new("./interleaved.bin", 4000);
 
-    let size = 6144;
+    let size = 32;
 
     let mut graph = network(size);
 
@@ -47,19 +47,20 @@ fn main() {
             batch_size: 16_384,
             batches_per_superbatch: 6104,
             start_superbatch: 1,
-            end_superbatch: 600,
+            // overbaking cuz i have spare hardware time overnight
+            end_superbatch: 200,
         },
         wdl_scheduler: wdl::ConstantWDL { value: 0.0 },
-        lr_scheduler: lr::ExponentialDecayLR {
-            initial_lr: 0.001,
+        lr_scheduler: lr::CosineDecayLR {
+            initial_lr: 0.01,
             final_lr: 0.00001,
-            final_superbatch: 600,
+            final_superbatch: 200,
         },
-        save_rate: 40,
+        save_rate: 10,
     };
 
     let settings = LocalSettings {
-        threads: 4,
+        threads: 12,
         test_set: None,
         output_directory: "checkpoints",
         batch_queue_size: 32,
@@ -69,6 +70,7 @@ fn main() {
     println!("{}", logger::ansi("Beginning Training", "34;1"));
     schedule.display();
     settings.display();
+    println!("Arch                   : {}->{}->{}x{}", inputs::INPUT_SIZE, size, 1, NUM_MOVES);
 
     trainer.train_custom(
         &data_preparer,
@@ -79,7 +81,7 @@ fn main() {
             if schedule.should_save(sb) {
                 trainer
                     .save_weights_portion(
-                        &format!("checkpoints/{ID}-{sb}.network"),
+                        &format!("checkpoints/{ID}.pn-{sb}"),
                         &["l0w", "l0b", "l1w", "l1b"],
                     )
                     .unwrap();
@@ -98,13 +100,12 @@ fn network(size: usize) -> Graph {
     let l0w = builder.create_weights("l0w", Shape::new(size, inputs::INPUT_SIZE));
     let l0b = builder.create_weights("l0b", Shape::new(size, 1));
 
-    let l1w = builder.create_weights("l1w", Shape::new(moves::NUM_MOVES, size / 2));
+    let l1w = builder.create_weights("l1w", Shape::new(moves::NUM_MOVES, size));
     let l1b = builder.create_weights("l1b", Shape::new(moves::NUM_MOVES, 1));
 
     let l1 = operations::affine(&mut builder, l0w, inputs, l0b);
     let l1a = operations::activate(&mut builder, l1, Activation::CReLU);
-    let l1r = operations::pairwise_mul(&mut builder, l1a);
-    let l2 = operations::affine(&mut builder, l1w, l1r, l1b);
+    let l2 = operations::affine(&mut builder, l1w, l1a, l1b);
 
     operations::sparse_softmax_crossentropy_loss_masked(&mut builder, mask, l2, dist);
 
