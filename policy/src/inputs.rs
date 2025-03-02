@@ -5,6 +5,7 @@ pub const MAX_ACTIVE: usize = 32;
 
 pub fn map_policy_inputs<F: FnMut(usize)>(pos: &Position, mut f: F) {
     let flip = pos.stm() == Side::BLACK;
+    let hm = if pos.king_index() % 8 > 3 { 7 } else { 0 };
 
     for piece in Piece::PAWN..=Piece::KING {
         let pc = 64 * (piece - 2);
@@ -19,7 +20,7 @@ pub fn map_policy_inputs<F: FnMut(usize)>(pos: &Position, mut f: F) {
 
         while our_bb > 0 {
             let sq = our_bb.trailing_zeros();
-            let feat = pc + sq as usize;
+            let feat = pc + (sq ^ hm) as usize;
 
             f(feat);
 
@@ -28,7 +29,7 @@ pub fn map_policy_inputs<F: FnMut(usize)>(pos: &Position, mut f: F) {
 
         while opp_bb > 0 {
             let sq = opp_bb.trailing_zeros();
-            let feat = 384 + pc + sq as usize;
+            let feat = 384 + pc + (sq ^ hm) as usize;
 
             f(feat);
 

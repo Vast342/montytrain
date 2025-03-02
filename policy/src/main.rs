@@ -11,13 +11,13 @@ use moves::NUM_MOVES;
 use std::env;
 use trainer::Trainer;
 
-const ID: &str = "apn_004";
+const ID: &str = "apn_009";
 
 fn main() {
     env::set_var("RUST_BACKTRACE", "1");
     let data_preparer = preparer::DataPreparer::new("./interleaved.bin", 4000);
 
-    let size = 32;
+    let size = 512;
 
     let mut graph = network(size);
 
@@ -47,16 +47,15 @@ fn main() {
             batch_size: 16_384,
             batches_per_superbatch: 6104,
             start_superbatch: 1,
-            // overbaking cuz i have spare hardware time overnight
-            end_superbatch: 200,
+            end_superbatch: 35,
         },
         wdl_scheduler: wdl::ConstantWDL { value: 0.0 },
         lr_scheduler: lr::CosineDecayLR {
             initial_lr: 0.01,
-            final_lr: 0.00001,
-            final_superbatch: 200,
+            final_lr: 0.0001,
+            final_superbatch: 35,
         },
-        save_rate: 10,
+        save_rate: 5,
     };
 
     let settings = LocalSettings {
@@ -104,7 +103,7 @@ fn network(size: usize) -> Graph {
     let l1b = builder.create_weights("l1b", Shape::new(moves::NUM_MOVES, 1));
 
     let l1 = operations::affine(&mut builder, l0w, inputs, l0b);
-    let l1a = operations::activate(&mut builder, l1, Activation::CReLU);
+    let l1a = operations::activate(&mut builder, l1, Activation::SCReLU);
     let l2 = operations::affine(&mut builder, l1w, l1a, l1b);
 
     operations::sparse_softmax_crossentropy_loss_masked(&mut builder, mask, l2, dist);
