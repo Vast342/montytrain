@@ -1,33 +1,12 @@
 use bullet::{
-    default::formats::montyformat::chess::{Castling, Position}, nn::{optimiser::{AdamWOptimiser, Optimiser}, Graph}, ExecutionContext, NetworkTrainer
+    nn::optimiser::{AdamWOptimiser, Optimiser},
+    ExecutionContext, NetworkTrainer,
 };
 
 use crate::preparer::PreparedData;
 
 pub struct Trainer {
     pub optimiser: Optimiser<ExecutionContext, AdamWOptimiser>,
-}
-
-/*
-    Bullet's internal stuff turns the fen into a datapoint and then evals that so uhhhhhh
-    do with that information what you will
-*/
-impl Trainer {
-    pub fn print_policy(&mut self, fen: &str, graph: &Graph) {
-        println!("FEN: {fen}");
-        let mut castling = Castling::default();
-        let board = Position::parse_fen(fen, &mut castling);
-        let mut moves = vec![];
-        board.map_legal_moves(&castling, |mov| moves.push(mov));
-
-        // guess i gotta figure out how to inference
-
-        // softmax
-
-        // sort
-
-        // output
-    }
 }
 
 impl NetworkTrainer for Trainer {
