@@ -34,7 +34,7 @@ impl NetworkTrainer for Trainer {
                 .unwrap();
         }
 
-        let inputs = &prepared.stm;
+        let inputs = &prepared.ntm;
         unsafe {
             graph
                 .get_input_mut("ntm")

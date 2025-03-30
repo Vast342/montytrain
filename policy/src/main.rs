@@ -49,15 +49,15 @@ fn main() {
             batch_size: 16_384,
             batches_per_superbatch: 6104,
             start_superbatch: 1,
-            end_superbatch: 200,
+            end_superbatch: 40,
         },
         wdl_scheduler: wdl::ConstantWDL { value: 0.0 },
         lr_scheduler: lr::ExponentialDecayLR {
             initial_lr: 0.001,
             final_lr: 0.00001,
-            final_superbatch: 200,
+            final_superbatch: 40,
         },
-        save_rate: 10,
+        save_rate: 5,
     };
 
     let settings = LocalSettings {
@@ -88,7 +88,7 @@ fn main() {
                             SavedFormat::new(
                                 "l1w",
                                 QuantTarget::Float,
-                                Layout::Transposed(Shape::new(moves::NUM_MOVES, size * 2)),
+                                Layout::Transposed(Shape::new(moves::NUM_MOVES, size)),
                             ),
                             SavedFormat::new("l1b", QuantTarget::Float, Layout::Normal),
                         ],
@@ -121,10 +121,10 @@ fn network(size: usize) -> (Graph, Node) {
     let dist = builder.new_dense_input("dist", Shape::new(moves::MAX_MOVES, 1));
 
     let l0 = builder.new_affine("l0", inputs::INPUT_SIZE, size);
-    let l1 = builder.new_affine("l1", 2 * size, moves::NUM_MOVES);
+    let l1 = builder.new_affine("l1", size, moves::NUM_MOVES);
 
     let mut out = l0.forward_sparse_dual_with_activation(stm, ntm, Activation::CReLU);
-    //out = out.pairwise_mul_post_affine_dual(); FOR LATER
+    out = out.pairwise_mul_post_affine_dual();
     out = l1.forward(out);
     out.masked_softmax_crossentropy_loss(dist, mask);
 
