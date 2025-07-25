@@ -1,14 +1,14 @@
-use montyformat::chess::{Attacks, Move, Piece, Position, Side};
+use montyformat::chess::{Move, Piece, Position, Side};
 
 pub const MAX_MOVES: usize = 64;
-pub const INPUT_SIZE: usize = 768 * 4;
+pub const INPUT_SIZE: usize = 768;
 pub const MAX_ACTIVE_BASE: usize = 32;
-pub const NUM_MOVES_INDICES: usize = 2 * (OFFSETS[64] + PROMOS);
+pub const NUM_MOVES_INDICES: usize = /*2 * */OFFSETS[64] + PROMOS;
 
 pub fn map_move_to_index(pos: &Position, mov: Move) -> usize {
     let hm = if pos.king_index() % 8 > 3 { 7 } else { 0 };
     let flip = hm ^ if pos.stm() == Side::BLACK { 56 } else { 0 };
-    let good_see = (OFFSETS[64] + PROMOS) * usize::from(see(pos, mov, -108));
+    //let good_see = (OFFSETS[64] + PROMOS) * usize::from(see(pos, mov, -108));
 
     let src = usize::from(mov.src() ^ flip);
     let dst = usize::from(mov.to() ^ flip);
@@ -25,16 +25,13 @@ pub fn map_move_to_index(pos: &Position, mov: Move) -> usize {
         OFFSETS[src] + below.count_ones() as usize
     };
 
-    good_see + idx
+    /*good_see + */idx
 }
 
 pub fn map_base_inputs<F: FnMut(usize)>(pos: &Position, mut f: F) {
     let vert = if pos.stm() == Side::BLACK { 56 } else { 0 };
     let hori = if pos.king_index() % 8 > 3 { 7 } else { 0 };
     let flip = vert ^ hori;
-
-    let threats = pos.threats_by(pos.stm() ^ 1);
-    let defences = pos.threats_by(pos.stm());
 
     for piece in Piece::PAWN..=Piece::KING {
         let pc = 64 * (piece - 2);
@@ -44,17 +41,7 @@ pub fn map_base_inputs<F: FnMut(usize)>(pos: &Position, mut f: F) {
 
         while our_bb > 0 {
             let sq = our_bb.trailing_zeros() as usize;
-            let mut feat = pc + (sq ^ flip);
-
-            let bit = 1 << sq;
-            if threats & bit > 0 {
-                feat += 768;
-            }
-
-            if defences & bit > 0 {
-                feat += 768 * 2;
-            }
-
+            let feat = pc + (sq ^ flip);
             f(feat);
 
             our_bb &= our_bb - 1;
@@ -62,24 +49,14 @@ pub fn map_base_inputs<F: FnMut(usize)>(pos: &Position, mut f: F) {
 
         while opp_bb > 0 {
             let sq = opp_bb.trailing_zeros() as usize;
-            let mut feat = 384 + pc + (sq ^ flip);
-
-            let bit = 1 << sq;
-            if threats & bit > 0 {
-                feat += 768;
-            }
-
-            if defences & bit > 0 {
-                feat += 768 * 2;
-            }
-
+            let feat = 384 + pc + (sq ^ flip);
             f(feat);
 
             opp_bb &= opp_bb - 1;
         }
     }
 }
-
+/*
 const SEE_VALS: [i32; 8] = [0, 0, 100, 450, 450, 650, 1250, 0];
 
 fn gain(pos: &Position, mov: Move) -> i32 {
@@ -153,7 +130,7 @@ fn see(pos: &Position, mov: Move, threshold: i32) -> bool {
     }
 
     pos.stm() != us
-}
+}*/
 
 pub const PROMOS: usize = 4 * 22;
 

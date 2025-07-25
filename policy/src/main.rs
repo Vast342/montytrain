@@ -18,8 +18,8 @@ use bullet_cuda_backend::CudaDevice;
 use crate::data::MontyDataLoader;
 
 fn main() {
-    let hl = 512;
-    let dataloader = MontyDataLoader::new("data/policygen6.binpack", 4096, 4);
+    let hl = 256;
+    let dataloader = MontyDataLoader::new("data/apn.bin", 4096, 4);
 
     let device = CudaDevice::new(0).unwrap();
 
@@ -30,8 +30,8 @@ fn main() {
 
     let mut trainer = Trainer { optimiser, state: () };
 
-    let save_rate = 30;
-    let end_superbatch = 600;
+    let save_rate = 10;
+    let end_superbatch = 40;
     let initial_lr = 0.001;
     let final_lr = 0.00001;
 
@@ -50,6 +50,7 @@ fn main() {
         }),
     };
 
+    let name = "apn_008_2";
     trainer
         .train_custom(
             schedule,
@@ -58,10 +59,10 @@ fn main() {
             |trainer, superbatch| {
                 if superbatch % save_rate == 0 || superbatch == steps.end_superbatch {
                     println!("Saving Checkpoint");
-                    let dir = format!("checkpoints/policy-{superbatch}");
+                    let dir = format!("checkpoints/{name}-{superbatch}");
                     let _ = std::fs::create_dir(&dir);
                     trainer.optimiser.write_to_checkpoint(&dir).unwrap();
-                    model::save_quantised(&trainer.optimiser.graph, &format!("{dir}/quantised.bin")).unwrap();
+                    model::save_quantised(&trainer.optimiser.graph, &format!("{dir}/{name}.pn")).unwrap();
                 }
             },
         )
