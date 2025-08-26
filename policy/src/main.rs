@@ -2,11 +2,12 @@ pub mod data;
 pub mod inputs;
 pub mod model;
 
+use std::f32::consts::PI;
+
 use bullet_core::{
     device::Device,
     optimiser::{
-        adam::{AdamW, AdamWParams},
-        Optimiser,
+        adam::{AdamW, AdamWParams}, Optimiser
     },
     trainer::{
         schedule::{TrainingSchedule, TrainingSteps},
@@ -18,20 +19,21 @@ use bullet_cuda_backend::CudaDevice;
 use crate::data::MontyDataLoader;
 
 fn main() {
+    let name = "apn_014_70sb";
     let hl = 256;
-    let dataloader = MontyDataLoader::new("data/apn.bin", 4096, 4);
+    let dataloader = MontyDataLoader::new("data/interleaved.bin", 4096, 6, 6);
 
     let device = CudaDevice::new(0).unwrap();
 
     let (graph, node) = model::make(device, hl);
 
-    let params = AdamWParams { decay: 0.01, beta1: 0.9, beta2: 0.999, min_weight: -0.99, max_weight: 0.99 };
+    let params = AdamWParams { decay: 0.01, beta1: 0.95, beta2: 0.999, min_weight: -0.99, max_weight: 0.99 };
     let optimiser = Optimiser::<_, AdamW<_>>::new(graph, params).unwrap();
 
     let mut trainer = Trainer { optimiser, state: () };
 
-    let save_rate = 10;
-    let end_superbatch = 40;
+    let save_rate = 5;
+    let end_superbatch = 70;
     let initial_lr = 0.001;
     let final_lr = 0.00001;
 
@@ -45,12 +47,12 @@ fn main() {
                 return final_lr;
             }
 
-            let lambda = sb as f32 / end_superbatch as f32;
-            initial_lr * (final_lr / initial_lr).powf(lambda)
+            let progress = sb as f32 / end_superbatch as f32;
+            let lambda = 1.0 - 0.5 * (1.0 + (PI * progress).cos());
+            initial_lr + lambda * (final_lr - initial_lr)
         }),
     };
 
-    let name = "apn_008_2";
     trainer
         .train_custom(
             schedule,
