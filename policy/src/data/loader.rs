@@ -8,7 +8,7 @@ use bullet_core::{
 use montyformat::chess::Move;
 
 use super::reader::{DataReader, DecompressedData};
-use crate::inputs::{self, INPUT_SIZE, MAX_ACTIVE_BASE, MAX_MOVES, NUM_MOVES_INDICES};
+use crate::{inputs::{self, INPUT_SIZE, MAX_ACTIVE_BASE}, outputs::{self, MAX_MOVES, NUM_MOVES_INDICES}};
 
 #[derive(Clone)]
 pub struct MontyDataLoader {
@@ -74,7 +74,7 @@ pub fn prepare(data: &[DecompressedData], threads: usize) -> PreparedBatchHost {
                         total += visits;
 
                         let mov = Move::from(mov);
-                        moves_chunk[moves_offset + distinct] = inputs::map_move_to_index(pos, mov) as i32;
+                        moves_chunk[moves_offset + distinct] = outputs::map_move_to_index(pos, mov) as i32;
                         dist_chunk[moves_offset + distinct] = f32::from(visits);
                         distinct += 1;
                     }

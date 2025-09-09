@@ -2,16 +2,18 @@
     Anura's value net configuration, as retyped from memory by me right now
 */
 use bullet::{
-    nn::optimiser,
-    trainer::{
-        default::{inputs, loader, outputs},
+    nn::optimiser, trainer::{
+        default::{loader, outputs},
         save::SavedFormat,
         schedule::{lr, wdl, TrainingSchedule, TrainingSteps},
         settings::LocalSettings,
-    },
-    value::ValueTrainerBuilder,
+    }, value::ValueTrainerBuilder
 };
-//use viriformat::dataformat::Filter;
+use viriformat::dataformat::Filter;
+
+use crate::threats::ChessMirroredThreats;
+
+mod threats;
 
 /*
 - first ob dataset DONE
@@ -49,20 +51,11 @@ fn main() {
         ])
         .loss_fn(|output, target| output.sigmoid().squared_error(target))
         .single_perspective()
-        .inputs(inputs::ChessBucketsMirrored::new([
-            0, 0, 0, 0,
-            0, 0, 0, 0,
-            0, 0, 0, 0,
-            0, 0, 0, 0,
-            0, 0, 0, 0,
-            0, 0, 0, 0,
-            0, 0, 0, 0,
-            0, 0, 0, 0, 
-        ]))
+        .inputs(ChessMirroredThreats::new())
         .output_buckets(outputs::MaterialCount::<OUTPUT_BUCKET_COUNT>)
         .build(|builder, stm_inputs, output_buckets| {
             // weights
-            let l0 = builder.new_affine("l0", 768, HL_SIZE);
+            let l0 = builder.new_affine("l0", 768*4, HL_SIZE);
             let l1 = builder.new_affine("l1", HL_SIZE, OUTPUT_BUCKET_COUNT);
 
             // inference
@@ -71,7 +64,7 @@ fn main() {
         });
 
     let schedule = TrainingSchedule {
-        net_id: "avn_014_dot3".to_string(),
+        net_id: "avn_015_1280".to_string(),
         eval_scale: 400.0,
         steps: TrainingSteps {
             batch_size: 16_384,
@@ -81,7 +74,11 @@ fn main() {
         },
 
         wdl_scheduler: wdl::ConstantWDL { value: 0.5 },
-        lr_scheduler: lr::LinearDecayLR { initial_lr: 0.001, final_lr: 0.001 * 0.3 * 0.3 * 0.3 * 0.3, final_superbatch: TOTAL_SUPERBATCHES },
+        lr_scheduler: lr::LinearDecayLR {
+            initial_lr: 0.001,
+            final_lr: 0.001 * 0.3 * 0.3 * 0.3 * 0.3,
+            final_superbatch: TOTAL_SUPERBATCHES,
+        },
         save_rate: 50,
     };
 
@@ -90,32 +87,36 @@ fn main() {
     trainer.optimiser.set_params(optimiser_params);
 
     // when using viriformat, set threads to 2, and dataloader threads to 4
-    let settings =
-        LocalSettings { threads: 6, test_set: None, output_directory: "checkpoints", batch_queue_size: 512 };
+    let settings = LocalSettings { threads: 6, test_set: None, output_directory: "checkpoints", batch_queue_size: 512 };
 
     //let data_loader = loader::DirectSequentialDataLoader::new(&["C:/Users/Joseph/Downloads/anura-data-shuffled.bin"]);
     // ./target/release/bullet-utils.exe viribinpack splat D:\bullet\anura-datagen.vf C:\Users\Joseph\Downloads\anura-datagen.bf .
-    let data_loader = loader::DirectSequentialDataLoader::new(&["C:/Users/Joseph/Downloads/anura-datagen-notr-s.bf"]);
+    //let data_loader = loader::DirectSequentialDataLoader::new(&["C:/Users/Joseph/Downloads/anura-datagen-notr-s.bf"]);
 
     // currently unrestricted filter
-    /*let data_loader = loader::ViriBinpackLoader::new("D:/bullet/anura-datagen-notr.vf", 4096, 4   , Filter {
-        min_ply: 0,
-        min_pieces: 0,
-        max_eval: u32::MAX,
-        filter_tactical: false,
-        filter_check: false,
-        filter_castling: false,
-        max_eval_incorrectness: u32::MAX,   
-        random_fen_skipping: false,
-        random_fen_skip_probability: 0.0,
-        wdl_filtered: false,
-        wdl_model_params_a: [0.0; 4],
-        wdl_model_params_b: [0.0; 4],
-        material_min: 17,
-        material_max: 78,
-        mom_target: 58,
-        wdl_heuristic_scale: 1.0,
-    });*/
+    let data_loader = loader::ViriBinpackLoader::new(
+        "D:/bullet/anura-datagen-new.vf",
+        4096,
+        4,
+        Filter {
+            min_ply: 0,
+            min_pieces: 0,
+            max_eval: u32::MAX,
+            filter_tactical: false,
+            filter_check: false,
+            filter_castling: false,
+            max_eval_incorrectness: u32::MAX,
+            random_fen_skipping: false,
+            random_fen_skip_probability: 0.0,
+            wdl_filtered: false,
+            wdl_model_params_a: [0.0; 4],
+            wdl_model_params_b: [0.0; 4],
+            material_min: 17,
+            material_max: 78,
+            mom_target: 58,
+            wdl_heuristic_scale: 1.0,
+        },
+    );
 
     //trainer.load_from_checkpoint("checkpoints/avn_011-wdl-180");
     trainer.run(&schedule, &settings, &data_loader);

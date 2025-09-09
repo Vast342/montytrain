@@ -1,15 +1,16 @@
 use std::{
     fs::File,
-    io::{BufReader, Read, Cursor},
+    io::{BufReader, Cursor, Read},
     sync::mpsc,
     time::{SystemTime, UNIX_EPOCH},
 };
 
 use montyformat::{
-    chess::{Castling, Move, Position}, FastDeserialise, MontyFormat
+    chess::{Castling, Move, Position},
+    FastDeserialise, MontyFormat,
 };
 
-use crate::inputs::MAX_MOVES;
+use crate::outputs::MAX_MOVES;
 
 #[derive(Clone, Copy)]
 pub struct DecompressedData {
@@ -123,7 +124,7 @@ impl DataReader {
         std::thread::spawn(move || {
             while let Ok(mut inputs) = buffer_receiver.recv() {
                 shuffle(&mut inputs);
-                
+
                 if shuffled_sender.send(inputs).is_err() {
                     break;
                 }
@@ -194,14 +195,7 @@ fn parse_into_buffer(game: &[u8], buffer: &mut Vec<DecompressedData>) {
     bbs[6] = pbq & prq & rqk;
     bbs[7] = nbk & rqk;
 
-    let mut pos = Position::from_raw(
-        bbs,
-        stm > 0,
-        enp_sq,
-        rights,
-        halfm,
-        fullm,
-    );
+    let mut pos = Position::from_raw(bbs, stm > 0, enp_sq, rights, halfm, fullm);
 
     let mut rook_files = [[0; 2]; 2];
     for side in &mut rook_files {

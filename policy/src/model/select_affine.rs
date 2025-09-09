@@ -14,7 +14,7 @@ use bullet_core::{
 use bullet_cuda_backend::{CudaDevice, CudaError, CudaMarker};
 use cudarc::driver::{LaunchConfig, PushKernelArg};
 
-use crate::inputs::{MAX_MOVES, NUM_MOVES_INDICES};
+use crate::outputs::{MAX_MOVES, NUM_MOVES_INDICES};
 
 #[derive(Debug)]
 pub struct SelectAffine {

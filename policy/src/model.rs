@@ -12,7 +12,7 @@ use montyformat::chess::{Castling, Move, Position};
 
 use crate::{
     data::{loader::prepare, reader::DecompressedData},
-    inputs::{INPUT_SIZE, MAX_ACTIVE_BASE, MAX_MOVES, NUM_MOVES_INDICES},
+    inputs::{INPUT_SIZE, MAX_ACTIVE_BASE}, outputs::{MAX_MOVES, NUM_MOVES_INDICES},
 };
 
 pub fn make(device: CudaDevice, hl: usize) -> (Graph<CudaDevice>, NodeId) {
@@ -37,10 +37,10 @@ pub fn make(device: CudaDevice, hl: usize) -> (Graph<CudaDevice>, NodeId) {
     (builder.build(device), node)
 }
 
+// todo make it output closer to my format
 pub fn eval(graph: &mut Graph<CudaDevice>, node: NodeId, fen: &str) {
     let mut castling = Castling::default();
     let pos = Position::parse_fen(fen, &mut castling);
-
     let mut moves = [(0, 0); 64];
     let mut num = 0;
 
@@ -61,10 +61,13 @@ pub fn eval(graph: &mut Graph<CudaDevice>, node: NodeId, fen: &str) {
 
     let dist = graph.get(node).unwrap().get_dense_vals().unwrap();
 
+    let mut move_values: Vec<(u16, f32)> = (0..num).map(|i| (moves[i].0, dist[i])).collect();
+    move_values.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+
     println!();
     println!("{fen}");
-    for i in 0..num {
-        println!("{} -> {:.2}%", Move::from(moves[i].0).to_uci(&castling), dist[i] * 100.0)
+    for (mov, value) in move_values {
+        println!("{} -> {:.2}%", Move::from(mov).to_uci(&castling), value * 100.0);
     }
 }
 

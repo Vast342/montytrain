@@ -1,5 +1,6 @@
 pub mod data;
 pub mod inputs;
+pub mod outputs;
 pub mod model;
 
 use std::f32::consts::PI;
@@ -7,7 +8,8 @@ use std::f32::consts::PI;
 use bullet_core::{
     device::Device,
     optimiser::{
-        adam::{AdamW, AdamWParams}, Optimiser
+        adam::{AdamW, AdamWParams},
+        Optimiser,
     },
     trainer::{
         schedule::{TrainingSchedule, TrainingSteps},
@@ -19,8 +21,8 @@ use bullet_cuda_backend::CudaDevice;
 use crate::data::MontyDataLoader;
 
 fn main() {
-    let name = "apn_014_70sb";
-    let hl = 256;
+    let name = "apn_018_newoutputs";
+    let hl = 512;
     let dataloader = MontyDataLoader::new("data/interleaved.bin", 4096, 6, 6);
 
     let device = CudaDevice::new(0).unwrap();
@@ -32,12 +34,18 @@ fn main() {
 
     let mut trainer = Trainer { optimiser, state: () };
 
-    let save_rate = 5;
-    let end_superbatch = 70;
-    let initial_lr = 0.001;
+    let save_rate = 10;
+    let start_superbatch = 1;
+    let end_superbatch = 100;
+    let initial_lr = 0.002;
     let final_lr = 0.00001;
 
-    let steps = TrainingSteps { batch_size: 16384, batches_per_superbatch: 6104, start_superbatch: 1, end_superbatch };
+    let steps = TrainingSteps {
+        batch_size: 16384,
+        batches_per_superbatch: 6104,
+        start_superbatch: start_superbatch,
+        end_superbatch,
+    };
 
     let schedule = TrainingSchedule {
         steps,
@@ -53,6 +61,7 @@ fn main() {
         }),
     };
 
+    //trainer.optimiser.load_from_checkpoint(&format!("checkpoints/{name}-{}", start_superbatch - 1)).unwrap_or(());
     trainer
         .train_custom(
             schedule,
